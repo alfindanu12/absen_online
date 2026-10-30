@@ -1,0 +1,158 @@
+1-@extends('layouts.dashboard')
+2-@section('isi')
+3:    @if($dinas_luar->count() > 0)
+4-        @foreach ($dinas_luar as $dl)
+5-            <?php $dlid = $dl->id ?>
+6-            <?php $dltanggal = $dl->tanggal ?>
+7-            <?php $dlnamas = $dl->Shift->nama_shift  ?>
+8-            <?php $dljamas = $dl->Shift->jam_masuk ?>
+9-            <?php $dljamkel = $dl->Shift->jam_keluar ?>
+10-            <?php $dljamab = $dl->jam_absen ?>
+11-            <?php $dljampul = $dl->jam_pulang ?>
+12-            <?php $dlstatus = $dl->status_absen ?>
+13-
+14-        @endforeach
+15-    @else
+16-        <?php $dlid = "-" ?>
+17-        <?php $dltanggal = "-" ?>
+18-        <?php $dlnamas = "-"  ?>
+19-        <?php $dljamas = "-" ?>
+20-        <?php $dljamkel = "-" ?>
+21-        <?php $dljamab = "-" ?>
+22-        <?php $dljampul = "-" ?>
+23-        <?php $dlstatus = "-" ?>
+24-    @endif
+25-    <div class="container-fluid">
+26-        <center style="color: white">
+27-            <p class="p mb-2 text-gray-800">Tanggal Shift : {{ $dltanggal }}</p>
+28-            <p class="p mb-2 text-gray-800">Shift : {{ $dlnamas}} ({{ $dljamas }} - {{  $dljamkel }})</p>
+29-        </center>
+30-
+31-        <style>
+32-            h1,
+33-            h2,
+34-            p,
+35-            a {
+36-              font-family: sans-serif;
+37-              font-weight: 8;
+38-            }
+39-
+40-            .jam-digital-malasngoding {
+41-              overflow: hidden;
+42-              float: center;
+43-              width: 100px;
+44-              margin: 2px auto;
+45-              border: 0px solid #efefef;
+46-            }
+47-
+48-            .kotak {
+49-              float: left;
+50-              width: 30px;
+51-              height: 30px;
+52-              background-color: #189fff;
+53-            }
+54-
+55-            .jam-digital-malasngoding p {
+56-              color: #fff;
+57-              font-size: 16px;
+58-              text-align: center;
+59-              margin-top: 3px;
+60-            }
+61-        </style>
+62-
+63-        <div class="jam-digital-malasngoding">
+64-            <div class="kotak">
+65-              <p id="jam"></p>
+66-            </div>
+67-            <div class="kotak">
+68-              <p id="menit"></p>
+69-            </div>
+70-            <div class="kotak">
+71-              <p id="detik"></p>
+72-            </div>
+73-        </div>
+74-
+75-        <script>
+76-            window.setTimeout("waktu()", 1000);
+77-
+78-            function waktu() {
+79-              var waktu = new Date();
+80-              setTimeout("waktu()", 1000);
+81-              document.getElementById("jam").innerHTML = waktu.getHours();
+82-              document.getElementById("menit").innerHTML = waktu.getMinutes();
+83-              document.getElementById("detik").innerHTML = waktu.getSeconds();
+84-            }
+85-        </script>
+86-        <br>
+87-
+88-        <div class="d-flex justify-content-center">
+89-            <form action="{{ url('/my-location') }}" method="get">
+90-                @csrf
+91-                <input type="hidden" name="lat" id="lat2">
+92-                <input type="hidden" name="long" id="long2">
+93-                <input type="hidden" name="userid" value="{{ auth()->user()->id }}">
+94-                <button type="submit" class="btn btn-success">Lihat Lokasi Saya</button>
+95-            </form>
+96-        </div>
+97-
+98:        @if($dinas_luar->count() == 0)
+99-        <br>
+100-        <div class="card col-lg-12">
+101-        <div class="mt-5">
+102-            <div class="mb-5">
+103-                <center>
+104-                    <h2>Hubungi Admin Untuk Mapping Shift Anda</h2>
+105-                </center>
+106-            </div>
+107-        </div>
+108-        </div>
+109-        @elseif($dlstatus == "Libur")
+110-        <br>
+111-        <div class="card col-lg-12">
+112-        <div class="mt-5">
+113-            <div class="mb-5">
+114-                <center>
+115-                    <h2>Hari Ini Anda Libur</h2>
+116-                </center>
+117-            </div>
+118-        </div>
+119-        </div>
+120-        @elseif($dlstatus == "Cuti")
+121-        <br>
+122-        <div class="card col-lg-12">
+123-        <div class="mt-5">
+124-            <div class="mb-5">
+125-            <center>
+126-                <h2>Hari Ini Anda Cuti</h2>
+127-            </center>
+128-            </div>
+129-        </div>
+130-        </div>
+131-        @else
+132-            @if($dljamab == null)
+133-            <br>
+134-                <div class="card col-lg-12">
+135-                    <div class="mt-4">
+136-                        <form method="post" action="{{ url('/dinas-luar/masuk/'.$dlid) }}">
+137-                            @method('put')
+138-                            @csrf
+139-                            <div class="form-row">
+140-                                <div class="col"></div>
+141-                                <div class="col">
+142-                                    <center>
+143-                                        <h2>Masuk Dinas Luar: </h2>
+144-                                        <div class="webcam" id="results"></div>
+145-                                    </center>
+146-                                </div>
+147-                                <div class="col">
+148-                                    <input type="hidden" name="jam_absen">
+149-                                    <input type="hidden" name="foto_jam_absen" class="image-tag">
+150-                                    <input type="hidden" name="lat_absen" id="lat">
+151-                                    <input type="hidden" name="long_absen" id="long">
+152-                                    <input type="hidden" name="telat">
+153-                                    <input type="hidden" name="status_absen">
+154-                                </div>
+155-                            </div>
+156-                            <br>
+157-                            <center>
+158-                                <button type="submit" class="btn btn-primary" value="Ambil Foto" onClick="take_snapshot()">Masuk</button>

@@ -1,0 +1,22 @@
+name: Deploy Laravel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 202.10.43.23
+          username: alkn5413
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd public_html/absensi.alkindi.co.id
+            git pull origin main
+            php artisan config:clear
+            php artisan cache:clear
