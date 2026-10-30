@@ -40,7 +40,7 @@
     </style>
   @endpush
   @push('script')
-        <script src="{{ url('/face/dist/face-api.min.js') }}"></script>
+        <script src="{{ url('/face-runtime/dist/face-api.min.js') }}"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
             let faceMatcher = undefined;
@@ -65,12 +65,12 @@
             }
 
             Promise.all([
-                faceapi.nets.ageGenderNet.loadFromUri("{{ url('/face/weights') }}"),
-                faceapi.nets.ssdMobilenetv1.loadFromUri("{{ url('/face/weights') }}"),
-                faceapi.nets.tinyFaceDetector.loadFromUri("{{ url('/face/weights') }}"),
-                faceapi.nets.faceLandmark68Net.loadFromUri("{{ url('/face/weights') }}"),
-                faceapi.nets.faceRecognitionNet.loadFromUri("{{ url('/face/weights') }}"),
-                faceapi.nets.faceExpressionNet.loadFromUri("{{ url('/face/weights') }}")
+                faceapi.nets.ageGenderNet.loadFromUri("{{ url('/face-runtime/weights') }}"),
+                faceapi.nets.ssdMobilenetv1.loadFromUri("{{ url('/face-runtime/weights') }}"),
+                faceapi.nets.tinyFaceDetector.loadFromUri("{{ url('/face-runtime/weights') }}"),
+                faceapi.nets.faceLandmark68Net.loadFromUri("{{ url('/face-runtime/weights') }}"),
+                faceapi.nets.faceRecognitionNet.loadFromUri("{{ url('/face-runtime/weights') }}"),
+                faceapi.nets.faceExpressionNet.loadFromUri("{{ url('/face-runtime/weights') }}")
             ]).then(startSteam);
 
 

@@ -7,6 +7,7 @@
 .env.backup
 /database/karyawan.sql
 /database/karyawan_1.sql
+/public/face/
 /public/neural.json
 .phpunit.result.cache
 docker-compose.override.yml
