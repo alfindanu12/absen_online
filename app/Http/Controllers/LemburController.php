@@ -78,7 +78,7 @@ class LemburController extends Controller
             $image_base64 = base64_decode($image_parts[1]);
             $fileName = 'foto_jam_masuk_lembur/' . uniqid() . '.png';
     
-            file_put_contents(public_path('storage/'.$fileName), $image_base64);
+            Storage::disk('public')->put($fileName, $image_base64);
     
             $request["foto_jam_masuk"] = $fileName;
 
@@ -124,8 +124,7 @@ class LemburController extends Controller
             $image_base64 = base64_decode($image_parts[1]);
             $fileName = 'foto_jam_keluar_lembur/' . uniqid() . '.png';
 
-            // Storage::put($fileName, $image_base64);
-            file_put_contents(public_path('storage/'.$fileName), $image_base64);
+            Storage::disk('public')->put($fileName, $image_base64);
 
             $request["foto_jam_keluar"] = $fileName;
 
