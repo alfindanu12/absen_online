@@ -44,6 +44,7 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
             let faceMatcher = undefined;
+            let attendanceSent = false;
 
             let video = document.getElementById("video");
             let canvas = document.body.appendChild(document.createElement("canvas"));
@@ -124,11 +125,10 @@
                       const box = resizedDetections[i].detection.box
                       const drawBox = new faceapi.draw.DrawBox(box, { label: result.toString() })
                       drawBox.draw(canvas)
-                      var str = result.toString()
-                      rating = parseFloat(str.substring(str.indexOf('(') + 1,str.indexOf(')')))
-                      str = str.substring(0, str.indexOf('('))
-                      str = str.substring(0, str.length - 1)
-                      if(str != "unknown"){
+                      const str = result.label;
+                      const rating = result.distance;
+                      if(str != "unknown" && rating < 0.5 && !attendanceSent){
+                        attendanceSent = true;
                         console.log(str);
                         var canvas2 = document.createElement('canvas');
                         canvas2.width = 800;
@@ -142,11 +142,6 @@
                         var new_image_url = canvas2.toDataURL();
                         var img = document.createElement('img');
                         img.src = new_image_url;
-                        if(rating < 0.5){
-                          if(str == $("#log_name").text()){
-                              match = true;load_neural
-                          }
-                        }
                         $.ajaxSetup({
                             headers: {
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -155,7 +150,7 @@
                         $.ajax({
                             type : 'POST',
                             url : "{{ url('/presensi-pulang/store') }}",
-                            data :  {username: str, image: img.src},
+                            data :  {username: str, descriptor: Array.from(resizedDetections[i].descriptor), image: img.src},
                             cache : false,
                             success: function(msg){
                                 if (msg == "pulang") { 

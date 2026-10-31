@@ -360,6 +360,20 @@ class karyawanController extends Controller
             return response()->json(['message' => 'Data wajah tidak valid.'], 422);
         }
 
+        if (!User::where('username', $faceData['label'])->exists() || count($faceData['descriptors']) === 0) {
+            return response()->json(['message' => 'Pegawai atau descriptor wajah tidak ditemukan.'], 422);
+        }
+        foreach ($faceData['descriptors'] as $descriptor) {
+            if (!is_array($descriptor) || count($descriptor) !== 128) {
+                return response()->json(['message' => 'Panjang descriptor wajah tidak valid.'], 422);
+            }
+            foreach ($descriptor as $value) {
+                if (!is_numeric($value)) {
+                    return response()->json(['message' => 'Descriptor wajah tidak valid.'], 422);
+                }
+            }
+        }
+
         $path = 'private/neural.json';
         $storedData = Storage::disk('local')->exists($path)
             ? json_decode(Storage::disk('local')->get($path), true)
@@ -369,6 +383,9 @@ class karyawanController extends Controller
             $storedData = [];
         }
 
+        $storedData = array_values(array_filter($storedData, function ($entry) use ($faceData) {
+            return ($entry['label'] ?? null) !== $faceData['label'];
+        }));
         $storedData[] = $faceData;
         Storage::disk('local')->put($path, json_encode($storedData, JSON_UNESCAPED_UNICODE));
 

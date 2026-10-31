@@ -46,6 +46,16 @@ class authController extends Controller
 
     public function presensiStore(Request $request)
     {
+        $request->validate([
+            'username' => 'required|string|max:255',
+            'descriptor' => 'required|array|size:128',
+            'descriptor.*' => 'required|numeric',
+            'image' => ['required', 'string', 'max:6000000', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
+        ]);
+        if (!$this->faceMatches($request->input('username'), $request->input('descriptor'))) {
+            return response()->json('noMatch', 422);
+        }
+
         date_default_timezone_set('Asia/Jakarta');
         $currentDate = date('Y-m-d');
         $user = User::where('username', $request['username'])->first();
@@ -98,6 +108,16 @@ class authController extends Controller
 
     public function presensiPulangStore(Request $request)
     {
+        $request->validate([
+            'username' => 'required|string|max:255',
+            'descriptor' => 'required|array|size:128',
+            'descriptor.*' => 'required|numeric',
+            'image' => ['required', 'string', 'max:6000000', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
+        ]);
+        if (!$this->faceMatches($request->input('username'), $request->input('descriptor'))) {
+            return response()->json('noMatch', 422);
+        }
+
         date_default_timezone_set('Asia/Jakarta');
         $currentDate = date('Y-m-d');
         $user = User::where('username', $request['username'])->first();
@@ -169,6 +189,51 @@ class authController extends Controller
         $checkInAt = Carbon::parse($mappingShift->tanggal . ' ' . $mappingShift->jam_absen);
 
         return now()->greaterThanOrEqualTo($checkInAt->copy()->addHour());
+    }
+
+    private function faceMatches(string $username, array $descriptor): bool
+    {
+        for ($i = 0; $i < 128; $i++) {
+            if (!isset($descriptor[$i]) || !is_numeric($descriptor[$i])) {
+                return false;
+            }
+        }
+
+        $path = 'private/neural.json';
+        $storedData = Storage::disk('local')->exists($path)
+            ? json_decode(Storage::disk('local')->get($path), true)
+            : [];
+
+        if (!is_array($storedData)) {
+            return false;
+        }
+
+        foreach ($storedData as $faceData) {
+            if (($faceData['label'] ?? null) !== $username || !is_array($faceData['descriptors'] ?? null)) {
+                continue;
+            }
+
+            foreach ($faceData['descriptors'] as $knownDescriptor) {
+                if (!is_array($knownDescriptor) || count($knownDescriptor) !== 128) {
+                    continue;
+                }
+
+                $distanceSquared = 0.0;
+                for ($i = 0; $i < 128; $i++) {
+                    if (!isset($knownDescriptor[$i]) || !is_numeric($knownDescriptor[$i])) {
+                        continue 2;
+                    }
+                    $difference = (float) $descriptor[$i] - (float) $knownDescriptor[$i];
+                    $distanceSquared += $difference * $difference;
+                }
+
+                if (sqrt($distanceSquared) < 0.5) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function ajaxGetNeural()
