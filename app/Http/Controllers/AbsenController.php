@@ -49,9 +49,31 @@ class AbsenController extends Controller
         return redirect('maps/'.$request["lat"].'/'.$request['long'].'/'.$request['userid']);
     }
 
+    public function faceData()
+    {
+        $path = 'private/neural.json';
+        $storedData = Storage::disk('local')->exists($path)
+            ? json_decode(Storage::disk('local')->get($path), true)
+            : [];
+        $username = auth()->user()->username;
+
+        foreach (is_array($storedData) ? $storedData : [] as $faceData) {
+            if (($faceData['label'] ?? null) === $username && !empty($faceData['descriptors'])) {
+                return response()->json($faceData);
+            }
+        }
+
+        return response()->json(['message' => 'Wajah Anda belum didaftarkan. Hubungi admin.'], 404);
+    }
+
     public function absenMasuk(Request $request, $id)
     {
         date_default_timezone_set('Asia/Jakarta');
+
+        if (!$this->faceDescriptorMatches(auth()->user()->username, $request->input('face_descriptor'))) {
+            Alert::error('Wajah Tidak Cocok', 'Wajah harus terdeteksi dan cocok dengan data wajah yang didaftarkan.');
+            return redirect('/absen');
+        }
        
         $lat_kantor = auth()->user()->Lokasi->lat_kantor;
         $long_kantor = auth()->user()->Lokasi->long_kantor;
@@ -120,6 +142,11 @@ class AbsenController extends Controller
     public function absenPulang(Request $request, $id)
     {
         date_default_timezone_set('Asia/Jakarta');
+
+        if (!$this->faceDescriptorMatches(auth()->user()->username, $request->input('face_descriptor'))) {
+            Alert::error('Wajah Tidak Cocok', 'Wajah harus terdeteksi dan cocok dengan data wajah yang didaftarkan.');
+            return redirect('/absen');
+        }
         $request["jam_pulang"] = date('H:i');
 
         $mappingShift = MappingShift::findOrFail($id);
@@ -203,6 +230,51 @@ class AbsenController extends Controller
         $checkInAt = Carbon::parse($mappingShift->tanggal . ' ' . $mappingShift->jam_absen);
 
         return now()->greaterThanOrEqualTo($checkInAt->copy()->addHour());
+    }
+
+    private function faceDescriptorMatches(string $username, $submittedDescriptor): bool
+    {
+        $descriptor = is_string($submittedDescriptor) ? json_decode($submittedDescriptor, true) : null;
+        if (!is_array($descriptor) || count($descriptor) !== 128) {
+            return false;
+        }
+        for ($i = 0; $i < 128; $i++) {
+            if (!isset($descriptor[$i]) || !is_numeric($descriptor[$i])) {
+                return false;
+            }
+        }
+
+        $path = 'private/neural.json';
+        $storedData = Storage::disk('local')->exists($path)
+            ? json_decode(Storage::disk('local')->get($path), true)
+            : [];
+        if (!is_array($storedData)) {
+            return false;
+        }
+
+        foreach ($storedData as $faceData) {
+            if (($faceData['label'] ?? null) !== $username || !is_array($faceData['descriptors'] ?? null)) {
+                continue;
+            }
+            foreach ($faceData['descriptors'] as $knownDescriptor) {
+                if (!is_array($knownDescriptor) || count($knownDescriptor) !== 128) {
+                    continue;
+                }
+                $distanceSquared = 0.0;
+                for ($i = 0; $i < 128; $i++) {
+                    if (!isset($knownDescriptor[$i]) || !is_numeric($knownDescriptor[$i])) {
+                        continue 2;
+                    }
+                    $difference = (float) $descriptor[$i] - (float) $knownDescriptor[$i];
+                    $distanceSquared += $difference * $difference;
+                }
+                if (sqrt($distanceSquared) < 0.5) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function distance($lat1, $lon1, $lat2, $lon2, $unit)

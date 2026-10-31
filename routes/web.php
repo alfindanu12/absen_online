@@ -75,6 +75,7 @@ Route::put('/pegawai/proses-edit-shift/{id}', [karyawanController::class, 'prose
 Route::put('/pegawai/proses-edit-dinas/{id}', [karyawanController::class, 'prosesEditDinas'])->middleware('auth');
 
 Route::get('/absen', [AbsenController::class, 'index'])->middleware('auth');
+Route::get('/absen/face-data', [AbsenController::class, 'faceData'])->middleware('auth');
 Route::get('/dinas-luar', [DinasLuar::class, 'index'])->middleware('auth');
 
 Route::get('/my-location', [AbsenController::class, 'myLocation'])->middleware('auth');

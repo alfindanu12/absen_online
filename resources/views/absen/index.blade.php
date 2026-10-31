@@ -169,6 +169,7 @@
                             @csrf
                             <input type="hidden" name="jam_absen">
                             <input type="hidden" name="foto_jam_absen" class="image-tag">
+                            <input type="hidden" name="face_descriptor" class="face-descriptor">
                             <input type="hidden" name="lat_absen" id="lat">
                             <input type="hidden" name="long_absen" id="long">
                             <input type="hidden" name="telat">
@@ -184,6 +185,7 @@
                             @csrf
                             <input type="hidden" name="jam_pulang">
                             <input type="hidden" name="foto_jam_pulang" class="image-tag">
+                            <input type="hidden" name="face_descriptor" class="face-descriptor">
                             <input type="hidden" name="lat_pulang" id="lat">
                             <input type="hidden" name="long_pulang" id="long">
                             <input type="hidden" name="pulang_cepat">
@@ -202,6 +204,7 @@
 @push('script')
     @if ($attendancePhase === 'masuk' || $attendancePhase === 'pulang')
         <script type="text/javascript" src="{{ url('webcamjs/webcam.min.js') }}"></script>
+        <script src="{{ url('/face-runtime/dist/face-api.min.js') }}"></script>
         <script>
             (function () {
                 Webcam.set({
@@ -219,6 +222,42 @@
                 });
 
                 const form = document.querySelector('.attendance-capture-form');
+                const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+                const statusNode = document.querySelector('.attendance-camera-note');
+                let faceMatcher = null;
+
+                const setStatus = function (message) {
+                    if (statusNode) statusNode.textContent = message;
+                };
+
+                const prepareFaceMatcher = async function () {
+                    const modelPath = "{{ url('/face-runtime/weights') }}";
+                    setStatus('Memuat pemeriksaan wajah...');
+                    await faceapi.nets.tinyFaceDetector.loadFromUri(modelPath);
+                    await faceapi.nets.faceLandmark68Net.loadFromUri(modelPath);
+                    await faceapi.nets.faceRecognitionNet.loadFromUri(modelPath);
+
+                    const registeredFace = await $.ajax({
+                        url: "{{ url('/absen/face-data') }}",
+                        dataType: 'json'
+                    });
+                    const descriptors = (registeredFace.descriptors || []).map(function (descriptor) {
+                        return new Float32Array(Object.values(descriptor));
+                    });
+                    faceMatcher = new faceapi.FaceMatcher([
+                        new faceapi.LabeledFaceDescriptors(registeredFace.label, descriptors)
+                    ], 0.6);
+
+                    setStatus('Pemeriksaan wajah siap. Arahkan wajah ke kamera sebelum absen.');
+                    if (submitButton) submitButton.disabled = false;
+                };
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+                prepareFaceMatcher().catch(function () {
+                    setStatus('Pemeriksaan wajah gagal dimuat atau wajah belum didaftarkan. Hubungi admin.');
+                });
 
                 const takeSnapshot = function (done) {
                     Webcam.snap(function (dataUri) {
@@ -234,23 +273,60 @@
                         }
 
                         if (typeof done === 'function') {
-                            done();
+                            done(dataUri);
                         }
                     });
                 };
 
                 if (form) {
                     form.addEventListener('submit', function (event) {
-                        if (form.dataset.snapshotReady === 'true') {
+                        if (form.dataset.faceVerified === 'true') {
                             return;
                         }
 
                         event.preventDefault();
-                        form.dataset.snapshotReady = 'processing';
+                        if (!faceMatcher) {
+                            setStatus('Pemeriksaan wajah belum siap. Tunggu sebentar, lalu coba lagi.');
+                            return;
+                        }
 
-                        takeSnapshot(function () {
-                            form.dataset.snapshotReady = 'true';
-                            form.submit();
+                        if (submitButton) submitButton.disabled = true;
+                        setStatus('Mengambil foto dan memeriksa wajah...');
+
+                        takeSnapshot(async function (dataUri) {
+                            try {
+                                if (!dataUri) throw new Error('Kamera belum siap');
+                                const image = new Image();
+                                image.src = dataUri;
+                                await image.decode();
+                                const detection = await faceapi
+                                    .detectSingleFace(image, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: 0.5}))
+                                    .withFaceLandmarks()
+                                    .withFaceDescriptor();
+
+                                if (!detection) {
+                                    setStatus('Wajah tidak terdeteksi. Posisikan wajah di tengah kamera, lalu coba lagi.');
+                                    if (submitButton) submitButton.disabled = false;
+                                    return;
+                                }
+
+                                const match = faceMatcher.findBestMatch(detection.descriptor);
+                                const expectedUsername = @json(auth()->user()->username);
+                                if (match.label !== expectedUsername || match.distance >= 0.5) {
+                                    setStatus('Wajah tidak cocok dengan pegawai yang sedang login. Coba lagi atau hubungi admin.');
+                                    if (submitButton) submitButton.disabled = false;
+                                    return;
+                                }
+
+                                const descriptorField = form.querySelector('.face-descriptor');
+                                descriptorField.value = JSON.stringify(Array.from(detection.descriptor));
+                                form.dataset.faceVerified = 'true';
+                                setStatus('Wajah cocok. Menyimpan absensi...');
+                                form.submit();
+                            } catch (error) {
+                                setStatus('Pemeriksaan gagal. Periksa kamera dan koneksi, lalu coba lagi.');
+                                if (submitButton) submitButton.disabled = false;
+                            }
                         });
                     });
                 }
