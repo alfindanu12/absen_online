@@ -128,6 +128,17 @@
             let height = 600;
             const statusEl = document.getElementById('camera-status');
             const captureButton = document.getElementById('capture');
+            const captureButtonLabel = '<i class="fas fa-camera mr-2" aria-hidden="true"></i>Ambil Foto Wajah';
+
+            const setButtonBusy = (label) => {
+                captureButton.disabled = true;
+                captureButton.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>' + label;
+            };
+
+            const setButtonReady = () => {
+                captureButton.disabled = false;
+                captureButton.innerHTML = captureButtonLabel;
+            };
 
             const startSteam = () => {
                 navigator.mediaDevices.getUserMedia({
@@ -147,104 +158,101 @@
                 });
             }
 
-            console.log(faceapi.nets);
-            Promise.all([
-                faceapi.nets.ageGenderNet.loadFromUri("{{ url('/face-runtime/weights') }}"),
-                faceapi.nets.ssdMobilenetv1.loadFromUri("{{ url('/face-runtime/weights') }}"),
-                faceapi.nets.tinyFaceDetector.loadFromUri("{{ url('/face-runtime/weights') }}"),
-                faceapi.nets.faceLandmark68Net.loadFromUri("{{ url('/face-runtime/weights') }}"),
-                faceapi.nets.faceRecognitionNet.loadFromUri("{{ url('/face-runtime/weights') }}"),
-                faceapi.nets.faceExpressionNet.loadFromUri("{{ url('/face-runtime/weights') }}")
-            ]).then(startSteam).catch(() => {
+            const modelPath = "{{ url('/face-runtime/weights') }}";
+            const prepareFaceRecognition = async () => {
+                statusEl.textContent = 'Memuat model deteksi wajah...';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(modelPath);
+                statusEl.textContent = 'Memuat model titik wajah...';
+                await faceapi.nets.faceLandmark68Net.loadFromUri(modelPath);
+                statusEl.textContent = 'Memuat model pengenalan wajah...';
+                await faceapi.nets.faceRecognitionNet.loadFromUri(modelPath);
+                statusEl.textContent = 'Membuka kamera...';
+                startSteam();
+            };
+
+            prepareFaceRecognition().catch(() => {
                 statusEl.textContent = 'Model pengenalan wajah gagal dimuat. Periksa koneksi lalu muat ulang halaman.';
             });
 
             $(document).ready(async function(){
-                const descriptions = [];
                 $("#capture").click(async function(){
                     if (captureButton.disabled || !video.videoWidth || !video.videoHeight) return;
-                    captureButton.disabled = true;
+                    setButtonBusy('Memeriksa wajah...');
                     statusEl.textContent = 'Memeriksa wajah...';
                     try {
-                    var username = $('#username').val();
-                    const label = username;
-                    var canvas = document.createElement('canvas');
-                    canvas.width = 800;
-                    canvas.height = 600;
-                    var context = canvas.getContext('2d');
-                    var video = document.getElementById('video');
-                    var sourceWidth = video.videoWidth;
-                    var sourceHeight = video.videoHeight;
-                    var sourceRatio = sourceWidth / sourceHeight;
-                    var targetRatio = canvas.width / canvas.height;
-                    var cropX = 0;
-                    var cropY = 0;
-                    var cropWidth = sourceWidth;
-                    var cropHeight = sourceHeight;
-                    if (sourceRatio > targetRatio) {
-                        cropWidth = sourceHeight * targetRatio;
-                        cropX = (sourceWidth - cropWidth) / 2;
-                    } else {
-                        cropHeight = sourceWidth / targetRatio;
-                        cropY = (sourceHeight - cropHeight) / 2;
-                    }
-                    context.save();
-                    context.translate(800, 0);
-                    context.scale(-1, 1);
-                    context.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, 800, 600);
-                    context.restore();
-                    var img = document.createElement('img');
-                    img.src = canvas.toDataURL('image/png');
+                        const username = $('#username').val();
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 800;
+                        canvas.height = 600;
+                        const context = canvas.getContext('2d');
+                        const sourceWidth = video.videoWidth;
+                        const sourceHeight = video.videoHeight;
+                        const sourceRatio = sourceWidth / sourceHeight;
+                        const targetRatio = canvas.width / canvas.height;
+                        let cropX = 0;
+                        let cropY = 0;
+                        let cropWidth = sourceWidth;
+                        let cropHeight = sourceHeight;
+                        if (sourceRatio > targetRatio) {
+                            cropWidth = sourceHeight * targetRatio;
+                            cropX = (sourceWidth - cropWidth) / 2;
+                        } else {
+                            cropHeight = sourceWidth / targetRatio;
+                            cropY = (sourceHeight - cropHeight) / 2;
+                        }
+                        context.save();
+                        context.translate(canvas.width, 0);
+                        context.scale(-1, 1);
+                        context.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+                        context.restore();
+                        const img = document.createElement('img');
+                        img.src = canvas.toDataURL('image/png');
+                        await img.decode();
 
-                    await img.decode();
-                    const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                    if( detections != null){
-                        descriptions.push(detections.descriptor);
-                        var descrip = descriptions;
+                        statusEl.textContent = 'Mencari wajah pada foto...';
+                        setButtonBusy('Mencari Wajah...');
+                        const detections = await faceapi
+                            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: 0.5}))
+                            .withFaceLandmarks()
+                            .withFaceDescriptor();
+
+                        if (!detections) {
+                            setButtonReady();
+                            statusEl.textContent = 'Wajah belum terdeteksi. Dekatkan wajah, hadap kamera, lalu coba lagi.';
+                            return;
+                        }
+
                         $.ajaxSetup({
-                            headers: {
-                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                            }
+                            headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')}
                         });
-                        $.ajax({
-                            type : 'POST',
-                            url : "{{ url('/pegawai/face/ajaxPhoto') }}",
-                            data :  {image: img.src ,path: username},
-                            cache : false,
-                            success: function(msg){
-                                console.log(msg);
-                            },
-                            error: function(data){
-                                console.log('error:' ,data);
-                            }
-                        })
-                        var postData = new faceapi.LabeledFaceDescriptors(label, descrip);
-                        $.ajax({
-                            type : 'POST',
-                            url : "{{ url('/pegawai/face/ajaxDescrip') }}",
-                            data :  { myData: JSON.stringify(postData) },
-                            datatype : 'json',
-                            cache : false,
-                            success: function(msg){
-                                statusEl.textContent = 'Wajah berhasil didaftarkan. Mengalihkan halaman...';
-                                Swal.fire('Berhasil Daftar Wajah!', '', 'success');
-                                setInterval(function() {
-                                    window.location.href = "{{ url('/pegawai') }}";
-                                }, 2000);
-                            },
-                            error: function(data){
-                                console.log('error:' ,data);
-                                captureButton.disabled = false;
-                                statusEl.textContent = 'Gagal menyimpan data wajah. Silakan coba lagi.';
-                            }
-                        })
-                    } else {
-                        captureButton.disabled = false;
-                        statusEl.textContent = 'Wajah belum terdeteksi. Dekatkan wajah, hadap kamera, lalu coba lagi.';
-                    }
+                        statusEl.textContent = 'Menyimpan foto wajah...';
+                        setButtonBusy('Menyimpan Foto...');
+                        await $.ajax({
+                            type: 'POST',
+                            url: "{{ url('/pegawai/face/ajaxPhoto') }}",
+                            data: {image: img.src, path: username},
+                            cache: false
+                        });
+
+                        statusEl.textContent = 'Menyimpan data pengenalan wajah...';
+                        setButtonBusy('Menyimpan Data...');
+                        const postData = new faceapi.LabeledFaceDescriptors(username, [detections.descriptor]);
+                        await $.ajax({
+                            type: 'POST',
+                            url: "{{ url('/pegawai/face/ajaxDescrip') }}",
+                            data: {myData: JSON.stringify(postData)},
+                            dataType: 'json',
+                            cache: false
+                        });
+
+                        statusEl.textContent = 'Wajah berhasil didaftarkan. Mengalihkan halaman...';
+                        Swal.fire('Berhasil Daftar Wajah!', '', 'success');
+                        setTimeout(function() {
+                            window.location.href = "{{ url('/pegawai') }}";
+                        }, 1800);
                     } catch (error) {
-                        captureButton.disabled = false;
-                        statusEl.textContent = 'Pemeriksaan wajah gagal. Pastikan wajah terlihat jelas, lalu coba lagi.';
+                        setButtonReady();
+                        statusEl.textContent = 'Proses gagal. Periksa koneksi internet dan izin kamera, lalu coba lagi.';
                     }
                 });
             });
