@@ -209,7 +209,7 @@
 @endsection
 
 @push('script')
-    @if ($attendancePhase === 'masuk' || $attendancePhase === 'pulang')
+    @if (!$stateTitle && ($attendancePhase === 'masuk' || $attendancePhase === 'pulang'))
         <script type="text/javascript" src="{{ url('webcamjs/webcam.min.js') }}"></script>
         <script src="{{ url('/face-runtime/dist/face-api.min.js') }}"></script>
         <script>
@@ -222,7 +222,6 @@
                     flip_horiz: true
                 });
 
-                Webcam.attach('.attendance-webcam');
                 const mirrorCamera = function () {
                     document.querySelectorAll('.attendance-webcam').forEach(function(element) {
                         element.style.transform = 'scaleX(-1)';
@@ -264,6 +263,18 @@
                         }
                     }
                 };
+
+                const cameraNode = document.querySelector('.attendance-webcam');
+                if (!cameraNode) return;
+
+                // Handle Webcam.js errors in the page instead of its default browser alert.
+                Webcam.on('error', function (error) {
+                    console.error('Webcam.js:', error);
+                    setStatus('Kamera tidak dapat dibuka. Periksa izin kamera, lalu coba lagi.');
+                });
+
+                Webcam.attach(cameraNode);
+                mirrorCamera();
 
                 const prepareFaceMatcher = async function () {
                     const modelPath = "{{ url('/face-runtime/weights') }}";
