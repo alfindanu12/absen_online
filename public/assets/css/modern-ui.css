@@ -1060,6 +1060,13 @@ body.hold-transition.modern-dashboard .main-sidebar::before {
   justify-content: center;
 }
 
+/* WebcamJS flips the live preview and snapshot pixels; unflip the container
+   for the still image so its framing matches what the user saw in the preview. */
+.attendance-webcam.attendance-captured {
+  transform: none !important;
+  -webkit-transform: none !important;
+}
+
 .attendance-webcam video,
 .attendance-webcam canvas,
 .attendance-webcam img,

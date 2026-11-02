@@ -233,6 +233,8 @@
 
                 const reopenCamera = function () {
                     Webcam.reset();
+                    const cameraNode = document.querySelector('.attendance-webcam');
+                    if (cameraNode) cameraNode.classList.remove('attendance-captured');
                     Webcam.attach('.attendance-webcam');
                     mirrorCamera();
                 };
@@ -303,6 +305,7 @@
 
                         if (resultsNode) {
                             resultsNode.innerHTML = '<img src="' + dataUri + '" alt="Preview Absen">';
+                            resultsNode.classList.add('attendance-captured');
                         }
 
                         if (typeof done === 'function') {
