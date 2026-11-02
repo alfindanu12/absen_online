@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use RealRashid\SweetAlert\Facades\Alert;
 use App\Models\dinasLuar as ModelsDinasLuar;
 
 class DinasLuar extends Controller
@@ -92,6 +94,21 @@ class DinasLuar extends Controller
     public function absenPulangDinas(Request $request, $id)
     {
         date_default_timezone_set('Asia/Jakarta');
+        $assignment = ModelsDinasLuar::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        if (empty($assignment->jam_absen)) {
+            Alert::error('Absen Masuk Belum Ada', 'Catat absen masuk dinas luar terlebih dahulu.');
+            return redirect('/dinas-luar');
+        }
+
+        $checkoutAvailableAt = Carbon::parse($assignment->tanggal . ' ' . $assignment->jam_absen)->addHour();
+        if (now()->lt($checkoutAvailableAt)) {
+            Alert::warning('Belum Bisa Absen Pulang', 'Absen pulang dinas luar baru tersedia satu jam setelah absen masuk.');
+            return redirect('/dinas-luar');
+        }
+
         $request["jam_pulang"] = date('H:i');
         
             $foto_jam_pulang = $request["foto_jam_pulang"];

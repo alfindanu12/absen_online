@@ -1079,6 +1079,57 @@ body.hold-transition.modern-dashboard .main-sidebar::before {
   color: #667884;
 }
 
+.attendance-notice-overlay[hidden] {
+  display: none;
+}
+
+.attendance-notice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(10, 25, 32, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.attendance-notice-card {
+  width: min(100%, 380px);
+  padding: 1.5rem 1.4rem;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 20px;
+  background: #fff;
+  color: #263640;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(4, 20, 28, 0.3);
+  animation: attendance-notice-in 180ms ease-out;
+}
+
+.attendance-notice-icon {
+  display: block;
+  margin-bottom: 0.65rem;
+  color: #dc3545;
+  font-size: 2rem;
+}
+
+.attendance-notice-card p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@keyframes attendance-notice-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+html[data-theme="dark"] .attendance-notice-card {
+  background: #17262e;
+  color: #edf4f7;
+}
+
 .attendance-capture-form {
   margin-top: 1.2rem;
   display: flex;

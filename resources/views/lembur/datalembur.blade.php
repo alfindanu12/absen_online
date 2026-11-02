@@ -70,7 +70,11 @@
                                 <span class="badge badge-warning">{{ $jarak_masuk[0] }} Meter</span>
                             </td>
                             <td>
-                                <img src="{{ url('storage/' . $dl->foto_jam_masuk) }}" style="width: 60px">
+                                @if($dl->foto_jam_masuk)
+                                    <img src="{{ url('storage/' . $dl->foto_jam_masuk) }}" style="width: 60px">
+                                @else
+                                    <span class="badge badge-secondary">Foto melewati masa simpan</span>
+                                @endif
                             </td>
                             <td>
                                 @if ($dl->jam_keluar == null)
@@ -97,7 +101,11 @@
                                 @if($dl->jam_keluar == null)
                                     <span class="badge badge-warning">Belum Pulang Lembur</span>
                                 @else
-                                    <img src="{{ url('storage/' . $dl->foto_jam_keluar) }}" style="width: 60px">
+                                    @if($dl->foto_jam_keluar)
+                                        <img src="{{ url('storage/' . $dl->foto_jam_keluar) }}" style="width: 60px">
+                                    @else
+                                        <span class="badge badge-secondary">Foto melewati masa simpan</span>
+                                    @endif
                                 @endif
                             </td>
                             <td>

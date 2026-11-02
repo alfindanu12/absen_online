@@ -199,6 +199,12 @@
             </div>
         @endif
     </div>
+    <div class="attendance-notice-overlay" data-attendance-notice hidden>
+        <div class="attendance-notice-card" role="alert" aria-live="assertive">
+            <span class="attendance-notice-icon" aria-hidden="true"><i class="fas fa-exclamation-circle"></i></span>
+            <p data-attendance-notice-text></p>
+        </div>
+    </div>
 @endsection
 
 @push('script')
@@ -216,18 +222,41 @@
                 });
 
                 Webcam.attach('.attendance-webcam');
-                document.querySelectorAll('.attendance-webcam').forEach(function(element) {
-                    element.style.transform = 'scaleX(-1)';
-                    element.style.webkitTransform = 'scaleX(-1)';
-                });
+                const mirrorCamera = function () {
+                    document.querySelectorAll('.attendance-webcam').forEach(function(element) {
+                        element.style.transform = 'scaleX(-1)';
+                        element.style.webkitTransform = 'scaleX(-1)';
+                    });
+                };
+                mirrorCamera();
+
+                const reopenCamera = function () {
+                    Webcam.reset();
+                    Webcam.attach('.attendance-webcam');
+                    mirrorCamera();
+                };
 
                 const form = document.querySelector('.attendance-capture-form');
                 const submitButton = form ? form.querySelector('button[type="submit"]') : null;
                 const statusNode = document.querySelector('.attendance-camera-note');
+                const noticeOverlay = document.querySelector('[data-attendance-notice]');
+                const noticeText = document.querySelector('[data-attendance-notice-text]');
+                let noticeTimer = null;
                 let faceMatcher = null;
 
                 const setStatus = function (message) {
                     if (statusNode) statusNode.textContent = message;
+                    const shouldNotify = /tidak terdeteksi|tidak cocok|gagal|belum siap/i.test(message);
+                    if (noticeOverlay && noticeText) {
+                        window.clearTimeout(noticeTimer);
+                        if (shouldNotify) {
+                            noticeText.textContent = message;
+                            noticeOverlay.hidden = false;
+                            noticeTimer = window.setTimeout(function () { noticeOverlay.hidden = true; }, 4000);
+                        } else {
+                            noticeOverlay.hidden = true;
+                        }
+                    }
                 };
 
                 const prepareFaceMatcher = async function () {
@@ -305,7 +334,8 @@
                                     .withFaceDescriptor();
 
                                 if (!detection) {
-                                    setStatus('Wajah tidak terdeteksi. Posisikan wajah di tengah kamera, lalu coba lagi.');
+                                    setStatus('Gagal mendeteksi wajah. Kamera dibuka kembali otomatis. Posisikan wajah di tengah kamera dan coba lagi tanpa refresh.');
+                                    reopenCamera();
                                     if (submitButton) submitButton.disabled = false;
                                     return;
                                 }
@@ -313,7 +343,8 @@
                                 const match = faceMatcher.findBestMatch(detection.descriptor);
                                 const expectedUsername = @json(auth()->user()->username);
                                 if (match.label !== expectedUsername || match.distance >= 0.5) {
-                                    setStatus('Wajah tidak cocok dengan pegawai yang sedang login. Coba lagi atau hubungi admin.');
+                                    setStatus('Wajah tidak cocok dengan pegawai yang sedang login. Kamera dibuka kembali otomatis. Coba lagi tanpa refresh.');
+                                    reopenCamera();
                                     if (submitButton) submitButton.disabled = false;
                                     return;
                                 }
@@ -324,7 +355,8 @@
                                 setStatus('Wajah cocok. Menyimpan absensi...');
                                 form.submit();
                             } catch (error) {
-                                setStatus('Pemeriksaan gagal. Periksa kamera dan koneksi, lalu coba lagi.');
+                                setStatus('Gagal memeriksa wajah. Kamera dibuka kembali otomatis. Periksa kamera dan koneksi, lalu coba lagi tanpa refresh.');
+                                reopenCamera();
                                 if (submitButton) submitButton.disabled = false;
                             }
                         });

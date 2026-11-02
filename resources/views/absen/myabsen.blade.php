@@ -499,8 +499,10 @@
                                                     <span class="badge badge-warning">Sedang Cuti</span>
                                                 @elseif($da->jam_absen == null)
                                                     <span class="badge badge-danger">Belum Absen</span>
-                                                @else
+                                                @elseif($da->foto_jam_absen)
                                                     <img src="{{ url('storage/' . $da->foto_jam_absen) }}" alt="Foto masuk {{ $da->tanggal }}" class="my-absen-thumb">
+                                                @else
+                                                    <span class="badge badge-secondary">Foto melewati masa simpan</span>
                                                 @endif
                                             </div>
                                         </td>
@@ -578,8 +580,10 @@
                                                     <span class="badge badge-danger">Belum Absen</span>
                                                 @elseif($da->jam_pulang == null)
                                                     <span class="badge badge-warning">Belum Pulang</span>
-                                                @else
+                                                @elseif($da->foto_jam_pulang)
                                                     <img src="{{ url('storage/' . $da->foto_jam_pulang) }}" alt="Foto pulang {{ $da->tanggal }}" class="my-absen-thumb">
+                                                @else
+                                                    <span class="badge badge-secondary">Foto melewati masa simpan</span>
                                                 @endif
                                             </div>
                                         </td>

@@ -204,6 +204,8 @@
                                 ket = `<span class="badge badge-warning">Sedang Cuti</span>`;
                             }else if(data.jam_absen == null){
                                 ket = `<span class="badge badge-danger">Belum Absen</span>`;
+                            }else if(!data.foto_jam_absen){
+                                ket = `<span class="badge badge-secondary">Foto melewati masa simpan</span>`;
                             }else{
                                 ket = `${data.jam_absen}`;
                             }
@@ -290,6 +292,8 @@
                                 ket = `<span class="badge badge-danger">Belum Absen</span>`;
                             }else if(data.jam_pulang == null){
                                 ket = `<span class="badge badge-warning">Belum Pulang</span>`;
+                            }else if(!data.foto_jam_pulang){
+                                ket = `<span class="badge badge-secondary">Foto melewati masa simpan</span>`;
                             }else{
                                 ket = `${data.jam_pulang}`;
                             }

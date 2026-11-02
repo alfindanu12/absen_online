@@ -114,6 +114,10 @@
         $jamAbsen = optional($assignment)->jam_absen;
         $jamPulang = optional($assignment)->jam_pulang;
         $statusAbsen = optional($assignment)->status_absen ?? 'Belum Dipetakan';
+        $checkoutAvailableAt = ($tanggalShift && $jamAbsen)
+            ? \Carbon\Carbon::parse($tanggalShift . ' ' . $jamAbsen)->addHour()
+            : null;
+        $checkoutReady = $checkoutAvailableAt && now()->greaterThanOrEqualTo($checkoutAvailableAt);
 
         $tanggalTampil = $tanggalShift
             ? \Carbon\Carbon::parse($tanggalShift)->translatedFormat('d M Y')
@@ -252,6 +256,12 @@
                                     ? 'Mulai sesi dinas luar dengan foto yang jelas dan pastikan posisi Anda sudah sesuai sebelum menekan tombol masuk.'
                                     : 'Selesaikan sesi dinas luar dengan foto terbaru sebelum menekan tombol pulang.' }}
                             </p>
+                            @if ($actionPhase === 'pulang' && ! $checkoutReady)
+                                <p class="alert alert-warning py-2 px-3 mb-3" role="status">
+                                    Absen pulang tersedia setelah satu jam dari absen masuk, mulai pukul {{ $checkoutAvailableAt->format('H:i') }}.
+                                    Tombol akan aktif otomatis pada waktunya.
+                                </p>
+                            @endif
 
                             <div class="attendance-info-list">
                                 <div class="attendance-info-item">
@@ -302,7 +312,7 @@
                             <input type="hidden" name="lat_pulang" id="lat">
                             <input type="hidden" name="long_pulang" id="long">
                             <input type="hidden" name="pulang_cepat">
-                            <button type="submit" class="btn btn-primary attendance-action-btn">
+                            <button type="submit" class="btn btn-primary attendance-action-btn" data-checkout-at="{{ $checkoutAvailableAt ? $checkoutAvailableAt->timestamp : '' }}" {{ ! $checkoutReady ? 'disabled' : '' }}>
                                 <i class="fas fa-camera mr-2"></i> Pulang Dinas Luar
                             </button>
                         </form>
@@ -316,6 +326,25 @@
 @push('script')
     <script>
         (function () {
+            const checkoutButton = document.querySelector('[data-checkout-at]');
+            if (checkoutButton && checkoutButton.disabled) {
+                const availableAt = Number(checkoutButton.dataset.checkoutAt) * 1000;
+                const remaining = availableAt - Date.now();
+                if (remaining > 0) {
+                    window.setTimeout(function () {
+                        checkoutButton.disabled = false;
+                        const waitNotice = checkoutButton.closest('.attendance-action-card').querySelector('[role="status"]');
+                        if (waitNotice) {
+                            waitNotice.classList.remove('alert-warning');
+                            waitNotice.classList.add('alert-success');
+                            waitNotice.textContent = 'Waktu tunggu selesai. Anda sekarang bisa absen pulang.';
+                        }
+                    }, remaining);
+                } else {
+                    checkoutButton.disabled = false;
+                }
+            }
+
             const clockNode = document.querySelector('[data-live-clock]');
             const dateNode = document.querySelector('[data-live-date]');
 

@@ -112,7 +112,11 @@
                                 <span class="badge badge-danger">Belum Absen</span>
                             @else
                                 <!--<img src="{{ url('storage/' . $da->foto_jam_absen) }}" style="width: 60px">-->
-                                <img src="{{ url('storage') }}/{{$da->foto_jam_absen}}" style="width: 60px">
+                                @if($da->foto_jam_absen)
+                                    <img src="{{ url('storage') }}/{{$da->foto_jam_absen}}" style="width: 60px">
+                                @else
+                                    <span class="badge badge-secondary">Foto melewati masa simpan</span>
+                                @endif
                             @endif
                         </td>
                         <td>
@@ -178,7 +182,11 @@
                             @elseif($da->jam_pulang == null)
                                 <span class="badge badge-warning">Belum Pulang</span>
                             @else
-                                <img src="{{ url('storage/' . $da->foto_jam_pulang) }}" style="width: 60px">
+                                @if($da->foto_jam_pulang)
+                                    <img src="{{ url('storage/' . $da->foto_jam_pulang) }}" style="width: 60px">
+                                @else
+                                    <span class="badge badge-secondary">Foto melewati masa simpan</span>
+                                @endif
                             @endif
                         </td>
                         <td>
