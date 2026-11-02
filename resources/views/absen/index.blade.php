@@ -202,7 +202,8 @@
     <div class="attendance-notice-overlay" data-attendance-notice hidden>
         <div class="attendance-notice-card" role="alert" aria-live="assertive">
             <span class="attendance-notice-icon" aria-hidden="true"><i class="fas fa-exclamation-circle"></i></span>
-            <p data-attendance-notice-text></p>
+            <p>Pastikan posisi wajah berada di tengah bingkai, pencahayaan cukup, dan tidak tertutup kacamata hitam atau masker.</p>
+            <button type="button" class="attendance-notice-retry" data-attendance-notice-close>Coba Lagi</button>
         </div>
     </div>
 @endsection
@@ -240,19 +241,22 @@
                 const submitButton = form ? form.querySelector('button[type="submit"]') : null;
                 const statusNode = document.querySelector('.attendance-camera-note');
                 const noticeOverlay = document.querySelector('[data-attendance-notice]');
-                const noticeText = document.querySelector('[data-attendance-notice-text]');
-                let noticeTimer = null;
+                const noticeClose = document.querySelector('[data-attendance-notice-close]');
                 let faceMatcher = null;
+
+                if (noticeClose && noticeOverlay) {
+                    noticeClose.addEventListener('click', function () {
+                        noticeOverlay.hidden = true;
+                    });
+                }
 
                 const setStatus = function (message) {
                     if (statusNode) statusNode.textContent = message;
                     const shouldNotify = /tidak terdeteksi|tidak cocok|gagal|belum siap/i.test(message);
-                    if (noticeOverlay && noticeText) {
-                        window.clearTimeout(noticeTimer);
+                    if (noticeOverlay) {
                         if (shouldNotify) {
-                            noticeText.textContent = message;
                             noticeOverlay.hidden = false;
-                            noticeTimer = window.setTimeout(function () { noticeOverlay.hidden = true; }, 4000);
+                            if (noticeClose) noticeClose.focus();
                         } else {
                             noticeOverlay.hidden = true;
                         }
